@@ -1,5 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Query, HTTPException, Response
 import requests
 import tempfile
 import subprocess
@@ -38,6 +37,7 @@ def compress(
             input_path = os.path.join(tmpdir, "input.mp4")
             output_path = os.path.join(tmpdir, "output.mp4")
 
+            # Download source video
             r = requests.get(url, stream=True, timeout=120)
             if r.status_code != 200:
                 raise HTTPException(status_code=400, detail="Could not download source video")
@@ -51,12 +51,14 @@ def compress(
             if duration <= 0:
                 raise HTTPException(status_code=400, detail="Invalid video duration")
 
+            # Calculate target bitrate
             target_bytes = target_mb * 1024 * 1024
             audio_bitrate = 64000
             overhead = 32000
             total_bitrate = int((target_bytes * 8) / duration)
             video_bitrate = max(total_bitrate - audio_bitrate - overhead, 200000)
 
+            # First compression pass
             cmd = [
                 "ffmpeg", "-y",
                 "-i", input_path,
@@ -73,6 +75,7 @@ def compress(
             ]
             run(cmd)
 
+            # If still bigger than 16 MB, second pass
             if os.path.getsize(output_path) > 16 * 1024 * 1024:
                 cmd2 = [
                     "ffmpeg", "-y",
@@ -89,7 +92,18 @@ def compress(
                 run(cmd2)
 
             safe_name = filename.rsplit(".", 1)[0] + "_compressed.mp4"
-            return FileResponse(output_path, media_type="video/mp4", filename=safe_name)
+
+            # Read file into memory BEFORE temp folder deletes
+            with open(output_path, "rb") as f:
+                file_bytes = f.read()
+
+            return Response(
+                content=file_bytes,
+                media_type="video/mp4",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{safe_name}"'
+                }
+            )
 
     except HTTPException:
         raise
