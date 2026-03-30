@@ -150,3 +150,13 @@ def compress_to_r2(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/check-r2-env")
+def check_r2_env():
+    return {
+        "R2_ACCOUNT_ID": bool(1181711be60b6fcaa2e19486bf348da3),
+        "R2_ACCESS_KEY_ID": bool(8244ddc8041efe0b82cab031bbf44303),
+        "R2_SECRET_ACCESS_KEY": bool(d893c3e2713a624594d2b0ed9ea7e654c85fab941c564b5935dfc4e60977422e),
+        "R2_BUCKET_NAME": bool(watch-videos),
+        "R2_PUBLIC_BASE_URL": bool(https://pub-58af6cf789dd4673a343681b7cb2e8c0.r2.dev)
+    }
