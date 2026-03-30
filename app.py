@@ -9,8 +9,8 @@ import boto3
 app = FastAPI()
 
 R2_ACCOUNT_ID = os.getenv("1181711be60b6fcaa2e19486bf348da3", "")
-R2_ACCESS_KEY_ID = os.getenv("2dd5f7fce0a96c2e50fe7305f6770421", "")
-R2_SECRET_ACCESS_KEY = os.getenv("bb80bf38fca321a8c9c114d2c4982851b75eb1f1d3c374221648ed97a57b7b42", "")
+R2_ACCESS_KEY_ID = os.getenv("8244ddc8041efe0b82cab031bbf44303", "")
+R2_SECRET_ACCESS_KEY = os.getenv("d893c3e2713a624594d2b0ed9ea7e654c85fab941c564b5935dfc4e60977422e", "")
 R2_BUCKET_NAME = os.getenv("watch-videos", "")
 R2_PUBLIC_BASE_URL = os.getenv("https://pub-58af6cf789dd4673a343681b7cb2e8c0.r2.dev", "")
 
