@@ -103,3 +103,24 @@ def compress(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/normalize-phone")
+def normalize_phone(
+    contact_phone: str = "",
+    shipping_phone: str = "",
+    billing_phone: str = ""
+):
+    raw = contact_phone or shipping_phone or billing_phone
+
+    raw = raw.strip()
+    raw = raw.replace(" ", "").replace("-", "").replace("(", "").replace(")", "").replace("+", "")
+
+    if not raw:
+        return {"success": False, "final_phone": ""}
+
+    final_phone = "+91" + raw[-10:]
+
+    return {
+        "success": True,
+        "final_phone": final_phone
+    }
