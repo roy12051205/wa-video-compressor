@@ -25,7 +25,7 @@ def root():
 def compress(
     url: str = Query(...),
     filename: str = Query("video.mp4"),
-    target_mb: int = Query(1)
+    target_mb: int = Query(4)
 ):
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -50,7 +50,7 @@ def compress(
                 "-loglevel", "error",
                 "-y",
                 "-i", input_path,
-                "-t", "5",
+                "-t", "10",
                 "-vf", "scale='min(360,iw)':-2",
                 "-r", "24",
                 "-threads", "0",
@@ -72,7 +72,7 @@ def compress(
                     "-loglevel", "error",
                     "-y",
                     "-i", input_path,
-                    "-t", "5",
+                    "-t", "10",
                     "-vf", "scale='min(240,iw)':-2",
                     "-r", "20",
                     "-threads", "0",
