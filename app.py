@@ -33,6 +33,10 @@ def compress(
             input_path = os.path.join(tmpdir, f"input.{input_ext}")
             output_path = os.path.join(tmpdir, "output.mp4")
 
+            # 3.9 MB limit
+            target_limit_mb = max(float(target_mb) - 0.1, 0.5)
+            target_limit_bytes = int(target_limit_mb * 1024 * 1024)
+
             # download original video
             r = requests.get(url, stream=True, timeout=180)
             if r.status_code != 200:
@@ -43,7 +47,10 @@ def compress(
                     if chunk:
                         f.write(chunk)
 
-            # 5 second preview, small size
+            # ---------------------------------------------------
+            # PASS 1: first trim 10 sec, light quality
+            # If this is already <= 3.9 MB, return this directly
+            # ---------------------------------------------------
             cmd = [
                 "ffmpeg",
                 "-hide_banner",
@@ -51,21 +58,23 @@ def compress(
                 "-y",
                 "-i", input_path,
                 "-t", "10",
-                "-vf", "scale='min(360,iw)':-2",
+                "-vf", "scale='min(480,iw)':-2",
                 "-r", "24",
                 "-threads", "0",
                 "-c:v", "libx264",
                 "-preset", "ultrafast",
-                "-crf", "34",
+                "-crf", "28",
                 "-c:a", "aac",
-                "-b:a", "32k",
+                "-b:a", "64k",
                 "-movflags", "+faststart",
                 output_path
             ]
             run(cmd)
 
-            # if still too big, more aggressive second pass
-            if os.path.getsize(output_path) > 1.2 * 1024 * 1024:
+            # ---------------------------------------------------
+            # PASS 2: if still bigger than 3.9 MB, compress more
+            # ---------------------------------------------------
+            if os.path.getsize(output_path) > target_limit_bytes:
                 cmd2 = [
                     "ffmpeg",
                     "-hide_banner",
@@ -73,8 +82,32 @@ def compress(
                     "-y",
                     "-i", input_path,
                     "-t", "10",
-                    "-vf", "scale='min(240,iw)':-2",
+                    "-vf", "scale='min(360,iw)':-2",
                     "-r", "20",
+                    "-threads", "0",
+                    "-c:v", "libx264",
+                    "-preset", "ultrafast",
+                    "-crf", "34",
+                    "-c:a", "aac",
+                    "-b:a", "32k",
+                    "-movflags", "+faststart",
+                    output_path
+                ]
+                run(cmd2)
+
+            # ---------------------------------------------------
+            # PASS 3: if still bigger than 3.9 MB, compress harder
+            # ---------------------------------------------------
+            if os.path.getsize(output_path) > target_limit_bytes:
+                cmd3 = [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-loglevel", "error",
+                    "-y",
+                    "-i", input_path,
+                    "-t", "10",
+                    "-vf", "scale='min(240,iw)':-2",
+                    "-r", "18",
                     "-threads", "0",
                     "-c:v", "libx264",
                     "-preset", "ultrafast",
@@ -84,7 +117,7 @@ def compress(
                     "-movflags", "+faststart",
                     output_path
                 ]
-                run(cmd2)
+                run(cmd3)
 
             safe_name = filename.rsplit(".", 1)[0] + "_preview.mp4"
 
