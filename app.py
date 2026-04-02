@@ -21,42 +21,11 @@ def run(cmd):
 def root():
     return {"ok": True, "message": "preview compressor running"}
 
-@app.get("/normalize-phone")
-def normalize_phone(
-    contact_phone: str = "",
-    shipping_phone: str = "",
-    billing_phone: str = ""
-):
-    raw = contact_phone or shipping_phone or billing_phone
-    raw = raw.strip()
-
-    if not raw:
-        return {
-            "success": False,
-            "final_phone": ""
-        }
-
-    raw = (
-        raw.replace(" ", "")
-           .replace("-", "")
-           .replace("(", "")
-           .replace(")", "")
-           .replace("+", "")
-    )
-
-    # last 10 digits lo aur +91 lagao
-    final_phone = "+91" + raw[-10:]
-
-    return {
-        "success": True,
-        "final_phone": final_phone
-    }
-
 @app.get("/compress")
 def compress(
     url: str = Query(...),
     filename: str = Query("video.mp4"),
-    target_mb: int = Query(4)
+    target_mb: int = Query(1)
 ):
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -64,6 +33,7 @@ def compress(
             input_path = os.path.join(tmpdir, f"input.{input_ext}")
             output_path = os.path.join(tmpdir, "output.mp4")
 
+            # download original video
             r = requests.get(url, stream=True, timeout=180)
             if r.status_code != 200:
                 raise HTTPException(status_code=400, detail="Could not download source video")
@@ -73,42 +43,44 @@ def compress(
                     if chunk:
                         f.write(chunk)
 
+            # 5 second preview, small size
             cmd = [
                 "ffmpeg",
                 "-hide_banner",
                 "-loglevel", "error",
                 "-y",
                 "-i", input_path,
-                "-t", "10",
-                "-vf", "scale='min(480,iw)':-2",
+                "-t", "5",
+                "-vf", "scale='min(360,iw)':-2",
                 "-r", "24",
                 "-threads", "0",
                 "-c:v", "libx264",
                 "-preset", "ultrafast",
-                "-crf", "30",
+                "-crf", "34",
                 "-c:a", "aac",
-                "-b:a", "48k",
+                "-b:a", "32k",
                 "-movflags", "+faststart",
                 output_path
             ]
             run(cmd)
 
-            if os.path.getsize(output_path) > 4.2 * 1024 * 1024:
+            # if still too big, more aggressive second pass
+            if os.path.getsize(output_path) > 1.2 * 1024 * 1024:
                 cmd2 = [
                     "ffmpeg",
                     "-hide_banner",
                     "-loglevel", "error",
                     "-y",
                     "-i", input_path,
-                    "-t", "10",
-                    "-vf", "scale='min(360,iw)':-2",
+                    "-t", "5",
+                    "-vf", "scale='min(240,iw)':-2",
                     "-r", "20",
                     "-threads", "0",
                     "-c:v", "libx264",
                     "-preset", "ultrafast",
-                    "-crf", "34",
+                    "-crf", "38",
                     "-c:a", "aac",
-                    "-b:a", "32k",
+                    "-b:a", "24k",
                     "-movflags", "+faststart",
                     output_path
                 ]
@@ -131,3 +103,24 @@ def compress(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/normalize-phone")
+def normalize_phone(
+    contact_phone: str = "",
+    shipping_phone: str = "",
+    billing_phone: str = ""
+):
+    raw = contact_phone or shipping_phone or billing_phone
+
+    raw = raw.strip()
+    raw = raw.replace(" ", "").replace("-", "").replace("(", "").replace(")", "").replace("+", "")
+
+    if not raw:
+        return {"success": False, "final_phone": ""}
+
+    final_phone = "+91" + raw[-10:]
+
+    return {
+        "success": True,
+        "final_phone": final_phone
+    }
